@@ -65,6 +65,23 @@ module.exports = {
     the_root_network: {
       provider: () => {
         if (!process.env.ROOT_NETWORK_PRIVATE_KEY || !process.env.ROOT_NETWORK_RPC) {
+          throw new Error("ROOT_NETWORK_PRIVATE_KEY 또는 ROOT_NETWORK_RPC가 .env 파일에 설정되지 않았습니다");
+        }
+        return new HDWalletProvider(
+          process.env.ROOT_NETWORK_PRIVATE_KEY,
+          process.env.ROOT_NETWORK_RPC
+        );
+      },
+      network_id: 1440002, // The Root Network의 network ID
+      gas: 5000000,
+      gasPrice: 20000000000, // 20 Gwei
+      confirmations: 2,
+      timeoutBlocks: 200,
+      skipDryRun: true
+    },
+    the_root_network_old: {
+      provider: () => {
+        if (!process.env.ROOT_NETWORK_PRIVATE_KEY || !process.env.ROOT_NETWORK_RPC) {
           throw new Error("ROOT_NETWORK_PRIVATE_KEY or ROOT_NETWORK_RPC is not set in .env file");
         }
         return new HDWalletProvider(

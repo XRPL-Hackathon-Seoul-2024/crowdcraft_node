@@ -16,11 +16,12 @@ const wallet = new ethers.Wallet(process.env.XRPL_EVM_SIDECHAIN_DEVNET_PRIVATE, 
 
 // 스마트 컨트랙트 ABI와 주소
 const CROWDFUNDING_ABI = [
-    "function createProject(string memory _name, string memory _category, string memory _description, string memory _imageUrl, uint256 _goal, uint256 _durationInDays) public",
-    "function fundProject(uint256 _projectId) public payable",
-    "function getProjectDetails(uint256 _projectId) public view returns (string memory, string memory, string memory, string memory, address, uint256, uint256, uint256, bool, bool)",
-    "function getProjectsCount() public view returns (uint256)",
-    "function getAllProjects() public view returns (tuple(string,string,string,string,address,uint256,uint256,uint256,bool,bool)[] memory)"
+  "function createProject(string,string,string,string,uint256,uint256)",
+  "function fundProject(uint256) payable",
+  "function getProjectDetails(uint256) view returns (string,string,string,string,address,uint256,uint256,uint256,bool,bool)",
+  "function getProjectsCount() view returns (uint256)",
+  "function getAllProjects() view returns ((string,string,string,string,address,uint256,uint256,uint256,bool,bool)[])",
+  "event ProjectCreated(uint256 indexed projectId, string name, string category, string description, string imageUrl, address owner, uint256 goal, uint256 deadline)"
 ];
 const CROWDFUNDING_ADDRESS = process.env.CROWDFUNDING_CONTRACT_ADDRESS;
 

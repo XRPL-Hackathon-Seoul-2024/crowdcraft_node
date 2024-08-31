@@ -1,3 +1,4 @@
+
 const express = require('express');
 const { ethers } = require('ethers');
 const axios = require('axios');
@@ -14,6 +15,13 @@ function setDependencies(contract, walletInstance, uploadMiddleware) {
   crowdfundingContract = contract;
   wallet = walletInstance;
   upload = uploadMiddleware;
+
+  // 컨트랙트가 초기화된 후에 ABI를 로깅
+  if (crowdfundingContract && crowdfundingContract.interface) {
+    console.log('Contract ABI:', JSON.stringify(crowdfundingContract.interface.format('json'), null, 2));
+  } else {
+    console.error('Crowdfunding contract is not properly initialized');
+  }
 }
 
 async function uploadToIPFS(file) {
@@ -41,37 +49,93 @@ async function uploadToIPFS(file) {
 }
 
 // 프로젝트 생성
-router.post('/create/project', (req, res, next) => {
-  upload.single('image')(req, res, async (err) => {
-    if (err) {
-      return res.status(400).json({ success: false, error: err.message });
-    }
-    try {
-      const { name, category, description, goal, durationInDays } = req.body;
-      let imageUrl = '';
-      
-      if (req.file) {
-        imageUrl = await uploadToIPFS(req.file);
-      }
+// src/router.js의 프로젝트 생성 라우터
 
-      const tx = await crowdfundingContract.createProject(
-        name,
-        category,
-        description,
-        imageUrl,
-        ethers.parseEther(goal.toString()),
-        durationInDays
-      );
-      const receipt = await tx.wait();
-      const event = receipt.logs.find(log => log.fragment.name === 'ProjectCreated');
-      const projectId = event.args.projectId;
+router.post('/create/project', (req, res, next) => {
+    upload.single('image')(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, error: err.message });
+      }
+      try {
+        console.log('Received request body:', req.body);
+  
+        const { name, category, description, goal, durationInDays } = req.body;
+        if (!name || !category || !description || !goal || !durationInDays) {
+          return res.status(400).json({ success: false, error: "Missing required fields" });
+        }
+  
+        let imageUrl = '';
+        
+        if (req.file) {
+          imageUrl = await uploadToIPFS(req.file);
+        }
+  
+        console.log('createProject 함수 호출 인자:', {
+          name,
+          category,
+          description,
+          imageUrl,
+          goal: ethers.parseEther(goal.toString()).toString(),
+          durationInDays: BigInt(durationInDays).toString()
+        });
       
-      res.json({ success: true, projectId: projectId.toString(), transactionHash: receipt.hash, imageUrl });
-    } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
-    }
+        const tx = await crowdfundingContract.createProject(
+          name,
+          category,
+          description,
+          imageUrl,
+          ethers.parseEther(goal.toString()),
+          BigInt(durationInDays),
+          { gasLimit: 3000000 }
+        );
+        
+        console.log('Transaction sent:', tx.hash);
+        
+        const receipt = await tx.wait(2); // 2개의 확인을 기다림
+        console.log('Transaction receipt:', receipt);
+  
+        let projectId;
+        if (receipt.logs) {
+          for (const log of receipt.logs) {
+            try {
+              if (log.topics[0] === ethers.id("ProjectCreated(uint256,string,string,string,string,address,uint256,uint256)")) {
+                const decodedLog = crowdfundingContract.interface.parseLog({
+                  topics: log.topics,
+                  data: log.data
+                });
+                projectId = decodedLog.args[0];
+                console.log('ProjectCreated event found. Project ID:', projectId.toString());
+                break;
+              }
+            } catch (e) {
+              console.log('Error parsing log:', e);
+            }
+          }
+        }
+  
+        if (!projectId) {
+          console.log('ProjectCreated event not found. Fetching project count as fallback.');
+          const projectCount = await crowdfundingContract.getProjectsCount();
+          projectId = projectCount - 1n; // Assuming projectId is zero-indexed
+          console.log('Estimated Project ID from count:', projectId.toString());
+        }
+  
+        // 프로젝트 세부 정보 조회로 확인
+        try {
+          const projectDetails = await crowdfundingContract.getProjectDetails(projectId);
+          console.log('Project details retrieved:', projectDetails);
+        } catch (error) {
+          console.error('Error retrieving project details:', error);
+        }
+  
+        res.json({ success: true, projectId: projectId.toString(), transactionHash: receipt.hash, imageUrl });
+      } catch (error) {
+        console.error('Error in project creation:', error);
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
   });
-});
+
 
 // 모든 프로젝트 조회
 router.get('/projects', async (req, res) => {
