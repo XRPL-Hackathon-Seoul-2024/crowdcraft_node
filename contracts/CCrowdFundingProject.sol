@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract CrowdFundingProject {
+contract CCrowdFundingProject {
     struct Project {
         string name;
         string category;

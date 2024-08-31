@@ -10,11 +10,11 @@ app.use(cors());
 app.use(express.json());
 const port = process.env.PORT || 3000;
 
-// XRPL EVM 사이드체인 설정
-const provider = new ethers.JsonRpcProvider(process.env.XRPL_EVM_SIDECHAIN_RPC);
-const wallet = new ethers.Wallet(process.env.XRPL_EVM_SIDECHAIN_DEVNET_PRIVATE, provider);
+// The Root Network - Porcini Testnet Configuration
+const provider = new ethers.JsonRpcProvider(process.env.ROOT_NETWORK_RPC);
+const wallet = new ethers.Wallet(process.env.ROOT_NETWORK_PRIVATE_KEY, provider);
 
-// 스마트 컨트랙트 ABI와 주소
+// Smart Contract ABI and Address
 const CROWDFUNDING_ABI = [
   "function createProject(string,string,string,string,uint256,uint256)",
   "function fundProject(uint256) payable",
@@ -25,36 +25,36 @@ const CROWDFUNDING_ABI = [
 ];
 const CROWDFUNDING_ADDRESS = process.env.CROWDFUNDING_CONTRACT_ADDRESS;
 
-// 스마트 컨트랙트 인스턴스 생성
+// Create Smart Contract Instance
 const crowdfundingContract = new ethers.Contract(CROWDFUNDING_ADDRESS, CROWDFUNDING_ABI, wallet);
 
-// Multer 설정
+// Multer setup for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/') // 'uploads' 폴더에 임시로 저장
+    cb(null, 'uploads/');
   },
   filename: function (req, file, cb) {
-    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
+    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
   }
 });
 
 const upload = multer({ storage: storage });
 
-// 라우터 임포트
+// Import router and set dependencies
 const { router, setDependencies } = require('./router');
 
-// 라우터에 필요한 의존성 주입
+// Inject dependencies into the router
 setDependencies(crowdfundingContract, wallet, upload);
 
-// 라우터 사용
+// Use the router
 app.use('/api', router);
 
-// 서버 시작
+// Start the server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
-// 에러 핸들링
+// Error handling
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
