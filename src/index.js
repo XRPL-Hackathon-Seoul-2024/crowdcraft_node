@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const port = 3000;
 
-// Ethereum 설정
+// Acelar Ethereum 설정 - https://docs.xrplevm.org/docs/axelar/bridge-tokens-axelar/
 const AXELAR_GATEWAY = '0xAABdd46ba1B3147d0Cf6aCc9605a74fE8668fC74';
 const AXELAR_GATEWAY_ABI = [
   "function sendToken(string destinationChain, string destinationAddress, string symbol, uint256 amount)"
