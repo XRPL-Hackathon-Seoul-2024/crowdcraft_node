@@ -1,5 +1,6 @@
 const express = require('express');
 const xrpl = require('xrpl');
+const { generateWallet, mintNFT, getNFTs } = require('./wallet');
 
 const router = express.Router();
 
