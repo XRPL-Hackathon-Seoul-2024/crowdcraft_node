@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const port = 3000;
 
-// Acelar Ethereum 설정 - https://docs.xrplevm.org/docs/axelar/bridge-tokens-axelar/
+// Axelar Ethereum 설정 - https://docs.xrplevm.org/docs/axelar/bridge-tokens-axelar/
 const AXELAR_GATEWAY = '0xAABdd46ba1B3147d0Cf6aCc9605a74fE8668fC74';
 const AXELAR_GATEWAY_ABI = [
   "function sendToken(string destinationChain, string destinationAddress, string symbol, uint256 amount)"
@@ -23,6 +23,9 @@ const ethWallet = new ethers.Wallet(process.env.ETH_PRIVATE_KEY, alchemyProvider
 // XRPL 설정
 const xrplClient = new xrpl.Client(process.env.XRPL_TEST_NETWORK);
 const xrplWallet = xrpl.Wallet.fromSeed(process.env.XRPL_SEED);
+
+// Polygon 설정
+const polygonProvider = new ethers.JsonRpcProvider(process.env.POLYGON_RPC_URL);
 
 async function setupXrplClient() {
   try {
@@ -122,7 +125,7 @@ async function bridgeTokenToEthereum(toAddress, amount, symbol) {
           },
         },
       ],
-    }, { wallet: xrplWallet });  // 여기에 지갑을 추가합니다.
+    }, { wallet: xrplWallet });
     console.log(`Bridged ${amount} ${symbol} to Ethereum address ${toAddress}`);
     return tx.result.hash;
   } catch (error) {
@@ -130,7 +133,6 @@ async function bridgeTokenToEthereum(toAddress, amount, symbol) {
     return null;
   }
 }
-
 
 // 라우터 임포트
 const { router } = require('./router');
@@ -148,9 +150,18 @@ app.listen(port, async () => {
   // XRP 계정 잔액 가져오기
   const xrpAddress = xrplWallet.address;
   await getXrpBalance(xrpAddress);
+  
   // EVM 계정 잔액 가져오기
   const evmAddress = ethWallet.address;
   await getBalanceEvm(evmAddress);
+
+  // Polygon 연결 확인
+  try {
+    const blockNumber = await polygonProvider.getBlockNumber();
+    console.log('Polygon 연결됨. 현재 블록 번호:', blockNumber);
+  } catch (error) {
+    console.error('Polygon 연결 오류:', error);
+  }
 
   // Axelar를 사용한 자산 전송 (EVM에서 XRPL로)
   await bridgeTokenToXRPL(xrpAddress, '10', 'aUSDC');
@@ -161,4 +172,11 @@ app.listen(port, async () => {
   await getXrpBalance(xrpAddress);
   // EVM 계정 잔액 가져오기
   await getBalanceEvm(evmAddress);
+});
+
+// 서버 종료 시 XRPL 클라이언트 연결 해제
+process.on('SIGINT', async () => {
+  console.log('서버를 종료합니다...');
+  await xrplClient.disconnect();
+  process.exit();
 });
