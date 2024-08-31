@@ -18,12 +18,15 @@ npm run start
 - Server: Node.js Express
 - IPFS: Pinata
 - Wallet: Xumm-sdk
+- Language: Solidity
+- Framework: truffle
 ```
 
 ## Deploy
 
 ```
-- SideChain Contract: 0x9782B600d43cB7A881317Dd562a0676E19aB3a27
+- Contract: 0x9782B600d43cB7A881317Dd562a0676E19aB3a27
+- EVM Block explorer: https://explorer.xrplevm.org/address/0x6e38bA2048085FF9e5b0E4e260bfaa07D5E0e4e6
 ```
 
 ## Log
