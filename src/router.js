@@ -1,164 +1,139 @@
 const express = require('express');
-const xrpl = require('xrpl');
 const { ethers } = require('ethers');
-const { parseEther } = ethers;
-const { generateWallet, mintNFT, getNFTs } = require('./wallet');
+const axios = require('axios');
+const FormData = require('form-data');
+const fs = require('fs');
 
 const router = express.Router();
 
-// XRPL 클라이언트 초기화
-const xrplClient = new xrpl.Client(process.env.XRPL_TEST_NETWORK);
-// Polygon 프로바이더 설정
-const polygonProvider = new ethers.JsonRpcProvider(process.env.POLYGON_RPC_URL);
+let crowdfundingContract;
+let wallet;
+let upload;
 
-// CrowdFunding 컨트랙트 설정
-const crowdFundingABI = [
-    "function createProject(string memory _name, string memory _category, string memory _description, string memory _imageUrl, uint256 _goal, uint256 _durationInDays) public",
-    "function fundProject(uint256 _projectId) public payable",
-    "function getProjectDetails(uint256 _projectId) public view returns (string memory, string memory, string memory, string memory, address, uint256, uint256, uint256, bool, bool)"
-];
-const crowdFundingAddress = process.env.CROWDFUNDING_CONTRACT_ADDRESS;
-const crowdFundingContract = new ethers.Contract(crowdFundingAddress, crowdFundingABI, polygonProvider);
+function setDependencies(contract, walletInstance, uploadMiddleware) {
+  crowdfundingContract = contract;
+  wallet = walletInstance;
+  upload = uploadMiddleware;
+}
 
-router.post('/create/key', async (req, res) => {
-    try {
-        const wallet = await generateWallet(xrplClient);
-        const {publicKey, privateKey, classicAddress, seed} = wallet;
-        console.log({publicKey, privateKey, classicAddress, seed});
-        return res.send({publicKey, privateKey, classicAddress, seed});
-    } catch (error) {
-        console.log(`/api/create/key catch error: ${error}`);
-        return res.status(401).send(error);
-    }
-});
+async function uploadToIPFS(file) {
+  const formData = new FormData();
+  formData.append('file', fs.createReadStream(file.path));
 
-router.post('/create/nft', async (req, res) => {
-    try {
-        const {address, seed} = req.body;
-        console.log({address, seed});
+  const pinataMetadata = JSON.stringify({
+    name: file.originalname,
+  });
+  formData.append('pinataMetadata', pinataMetadata);
 
-        const wallet = xrpl.Wallet.fromSeed(seed);
-
-        const tx = await mintNFT(xrplClient, address, wallet);
-        console.log({tx});
-        return res.send({tx});
-    } catch (error) {
-        console.log(`/api/create/nft catch error: ${error}`);
-        return res.status(401).send(error);
-    }
-});
-
-router.get('/nfts', async (req, res) => {
-    try {
-        const {address} = req.query;
-        const nfts = await getNFTs(xrplClient, address);
-        return res.send({nfts});
-    } catch (error) {
-        console.log(`/api/nfts catch error: ${error}`);
-        return res.status(401).send(error);
-    }
-});
+  try {
+    const res = await axios.post("https://api.pinata.cloud/pinning/pinFileToIPFS", formData, {
+      maxBodyLength: "Infinity",
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${formData._boundary}`,
+        'Authorization': `Bearer ${process.env.PINATA_JWT}`
+      }
+    });
+    return `https://gateway.pinata.cloud/ipfs/${res.data.IpfsHash}`;
+  } catch (error) {
+    console.error('Error uploading to IPFS:', error);
+    throw new Error('Failed to upload image to IPFS');
+  }
+}
 
 // 프로젝트 생성
-router.post('/create/project', async (req, res) => {
-    try {
-        const { name, category, description, imageUrl, goal, durationInDays } = req.body;
-        
-        const wallet = new ethers.Wallet(process.env.POLYGON_PRIVATE_KEY, polygonProvider);
-        const contractWithSigner = crowdFundingContract.connect(wallet);
-
-        const tx = await contractWithSigner.createProject(
-            name,
-            category,
-            description,
-            imageUrl,
-            parseEther(goal.toString()),
-            durationInDays
-        );
-
-        const receipt = await tx.wait();
-        console.log("Project created:", receipt.hash);
-
-        return res.send({ transactionHash: receipt.hash });
-    } catch (error) {
-        console.log(`/api/create/project catch error: ${error}`);
-        return res.status(401).send(error);
+router.post('/create/project', (req, res, next) => {
+  upload.single('image')(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, error: err.message });
     }
+    try {
+      const { name, category, description, goal, durationInDays } = req.body;
+      let imageUrl = '';
+      
+      if (req.file) {
+        imageUrl = await uploadToIPFS(req.file);
+      }
+
+      const tx = await crowdfundingContract.createProject(
+        name,
+        category,
+        description,
+        imageUrl,
+        ethers.parseEther(goal.toString()),
+        durationInDays
+      );
+      const receipt = await tx.wait();
+      const event = receipt.logs.find(log => log.fragment.name === 'ProjectCreated');
+      const projectId = event.args.projectId;
+      
+      res.json({ success: true, projectId: projectId.toString(), transactionHash: receipt.hash, imageUrl });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
 });
 
-// XRP를 사용한 프로젝트 펀딩
-router.post('/fund/project', async (req, res) => {
-    try {
-        const { projectId, amount, xrpSeed } = req.body;
-        
-        // XRP에서 브릿지 계정으로 전송
-        const xrpWallet = xrpl.Wallet.fromSeed(xrpSeed);
-        const xrpTx = await xrplClient.submitAndWait({
-            TransactionType: "Payment",
-            Account: xrpWallet.address,
-            Amount: xrpl.xrpToDrops(amount),
-            Destination: process.env.BRIDGE_ACCOUNT
-        }, { wallet: xrpWallet });
-
-        if (xrpTx.result.meta.TransactionResult !== "tesSUCCESS") {
-            throw new Error("XRP transaction failed");
-        }
-
-        // Polygon 상의 컨트랙트 호출
-        const polygonWallet = new ethers.Wallet(process.env.POLYGON_PRIVATE_KEY, polygonProvider);
-        const contractWithSigner = crowdFundingContract.connect(polygonWallet);
-
-        const polygonTx = await contractWithSigner.fundProject(projectId, {
-            value: ethers.utils.parseEther(amount)
-        });
-
-        const receipt = await polygonTx.wait();
-        console.log("Project funded:", receipt.transactionHash);
-
-        return res.send({ 
-            xrpTransactionHash: xrpTx.result.hash,
-            polygonTransactionHash: receipt.transactionHash 
-        });
-    } catch (error) {
-        console.log(`/api/fund/project catch error: ${error}`);
-        return res.status(401).send(error);
-    }
+// 모든 프로젝트 조회
+router.get('/projects', async (req, res) => {
+  try {
+    const projects = await crowdfundingContract.getAllProjects();
+    const formattedProjects = projects.map((project, index) => ({
+      id: index,
+      name: project[0],
+      category: project[1],
+      description: project[2],
+      imageUrl: project[3],
+      owner: project[4],
+      goal: ethers.formatEther(project[5]),
+      amountRaised: ethers.formatEther(project[6]),
+      deadline: new Date(Number(project[7]) * 1000).toISOString(),
+      isFunded: project[8],
+      isClosed: project[9]
+    }));
+    res.json({ success: true, projects: formattedProjects });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-// 프로젝트 상세 정보 조회
-router.get('/project/:id', async (req, res) => {
-    try {
-        const projectId = req.params.id;
-        const projectDetails = await crowdFundingContract.getProjectDetails(projectId);
-        return res.send({ projectDetails });
-    } catch (error) {
-        console.log(`/api/project/:id catch error: ${error}`);
-        return res.status(401).send(error);
-    }
+// 특정 프로젝트 조회
+router.get('/projects/:id', async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const project = await crowdfundingContract.getProjectDetails(projectId);
+    const formattedProject = {
+      id: projectId,
+      name: project[0],
+      category: project[1],
+      description: project[2],
+      imageUrl: project[3],
+      owner: project[4],
+      goal: ethers.formatEther(project[5]),
+      amountRaised: ethers.formatEther(project[6]),
+      deadline: new Date(Number(project[7]) * 1000).toISOString(),
+      isFunded: project[8],
+      isClosed: project[9]
+    };
+    res.json({ success: true, project: formattedProject });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-// router.get('/project-details/:id', async (req, res) => {
-//     try {
-//         const projectId = req.params.id;
-//         const projectDetails = await crowdFundingContract.getProjectDetails(projectId);
-//         res.json({
-//             name: projectDetails[0],
-//             category: projectDetails[1],
-//             description: projectDetails[2],
-//             imageUrl: projectDetails[3],
-//             owner: projectDetails[4],
-//             goal: ethers.formatEther(projectDetails[5]),
-//             amountRaised: ethers.formatEther(projectDetails[6]),
-//             deadline: new Date(projectDetails[7] * 1000).toISOString(),
-//             isFunded: projectDetails[8],
-//             isClosed: projectDetails[9]
-//         });
-//     } catch (error) {
-//         console.error('Error fetching project details:', error);
-//         res.status(500).json({ error: 'Failed to fetch project details' });
-//     }
-// });
+// 프로젝트 후원
+router.post('/projects/:id/fund', async (req, res) => {
+  try {
+    const projectId = req.params.id;
+    const { amount } = req.body;
+    const tx = await crowdfundingContract.fundProject(projectId, { value: ethers.parseEther(amount) });
+    const receipt = await tx.wait();
+    res.json({ success: true, transactionHash: receipt.hash });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 module.exports = {
-    router, xrplClient
+  router: router,
+  setDependencies: setDependencies
 };

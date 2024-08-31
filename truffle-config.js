@@ -62,6 +62,40 @@ module.exports = {
    */
 
   networks: {
+    the_root_network: {
+      provider: () => {
+        if (!process.env.ROOT_NETWORK_PRIVATE_KEY || !process.env.ROOT_NETWORK_RPC) {
+          throw new Error("ROOT_NETWORK_PRIVATE_KEY or ROOT_NETWORK_RPC is not set in .env file");
+        }
+        return new HDWalletProvider(
+          process.env.ROOT_NETWORK_PRIVATE_KEY,
+          process.env.ROOT_NETWORK_RPC
+        );
+      },
+      network_id: 1440002, // The Root Network의 network ID
+      gas: 5000000,
+      gasPrice: 20000000000, // 20 Gwei
+      confirmations: 2,
+      timeoutBlocks: 200,
+      skipDryRun: true
+    },
+    xrpl_evm_sidechain: {
+      provider: () => {
+        if (!process.env.XRPL_EVM_SIDECHAIN_DEVNET_PRIVATE || !process.env.XRPL_EVM_SIDECHAIN_RPC) {
+          throw new Error("XRPL_EVM_SIDECHAIN_DEVNET_PRIVATE or XRPL_EVM_SIDECHAIN_RPC is not set in .env file");
+        }
+        return new HDWalletProvider(
+          process.env.XRPL_EVM_SIDECHAIN_DEVNET_PRIVATE,
+          process.env.XRPL_EVM_SIDECHAIN_RPC
+        );
+      },
+      network_id: 1440002,
+      gas: 8000000,  // 가스 한도 증가
+      gasPrice: 4500000000000,  // 가스 가격 증가 (4500 Gwei)
+      confirmations: 2,
+      timeoutBlocks: 200,
+      skipDryRun: true
+    },
     polygon_mainnet: {
       provider: () => new HDWalletProvider(process.env.PRIVATE_KEY.toString(), process.env.ALCHEMY_API_URL),
       network_id: 137,

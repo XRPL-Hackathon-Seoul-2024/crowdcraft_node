@@ -13,7 +13,7 @@ npm run start
 
 ```
 - Ledger: Axelar
-- SideChain: Polygon Mainnet(Solidity)
+- SideChain: xrpl_evm_sidechain
 - XRPL: xrpl.js
 - Server: Node.js Express
 - IPFS: Pinata
@@ -23,29 +23,53 @@ npm run start
 ## Deploy
 
 ```
-- SideChain Contract: 0x7b36b9d55f06377b8aed57e315393f74d8b0cec66cf03e4ed5a6d21daa945302 (EVM)
+- SideChain Contract: 0x9782B600d43cB7A881317Dd562a0676E19aB3a27
 ```
 
 ## Log
 ```
-    mac@macs-MacBook-Pro crowdcraft_node % npm run start
+Compiling your contracts...
+===========================
+> Everything is up to date, there is nothing to compile.
 
-    > xrpl_client_node@1.0.0 start
-    > node src/index.js
 
-    Server is running on http://localhost:3000
-    XRPL 클라이언트가 연결되었습니다.
-    XRP Address Balance: 99999988 drops
-    EVM Address Balance: 19.305210999689483764 ETH
-    Polygon 연결됨. 현재 블록 번호: 61269048
-    Bridged 10 aUSDC to XRPL address r4YpZ6GrBxw9M8MAghGSGVG5BRnQeamtg5
-    Bridged 10 XRP to Ethereum address 0x950205541860cDD5719725c8cC2d1031e0Cc50b1
-    XRP Address Balance: 99999976 drops
-    EVM Address Balance: 19.304509246089391428 ETH
+Starting migrations...
+======================
+> Network name:    'xrpl_evm_sidechain'
+> Network id:      1440002
+> Block gas limit: 21000000 (0x1406f40)
 
-    Project created: 0x3218ee3fcd90f89980f8eb862bd0f2cd2cef7a941b4fac12bc6b360c0ad4a627
-    check: https://polygonscan.com/tx/0x3218ee3fcd90f89980f8eb862bd0f2cd2cef7a941b4fac12bc6b360c0ad4a627
 
+1_deploy_contracts.js
+=====================
+
+   Replacing 'CrowdFundingProject'
+   -------------------------------
+   > transaction hash:    0xc4b0f1f6fdef398c75b3ce2d8706acae31b44ac356b2a4769b78395a1cce6ae6
+   > Blocks: 2            Seconds: 5
+   > contract address:    0x9782B600d43cB7A881317Dd562a0676E19aB3a27
+   > block number:        10878681
+   > block timestamp:     1725136568
+   > account:             0x05da2e47cA2983852F1f8A76e068d92609B9Bb60
+   > balance:             48.7595499
+   > gas used:            4000000 (0x3d0900)
+   > gas price:           4500 gwei
+   > value sent:          0 ETH
+   > total cost:          18 ETH
+
+   Pausing for 2 confirmations...
+
+   -------------------------------
+   > confirmation number: 1 (block: 10878683)
+   > confirmation number: 2 (block: 10878684)
+   > Saving artifacts
+   -------------------------------------
+   > Total cost:                  18 ETH
+
+Summary
+=======
+> Total deployments:   1
+> Final cost:          18 ETH
 ```
 
 ## Test

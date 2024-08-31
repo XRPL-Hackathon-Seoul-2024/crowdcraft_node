@@ -130,4 +130,12 @@ contract CrowdFundingProject {
     function getContribution(uint256 _projectId, address _contributor) public view projectExists(_projectId) returns (uint256) {
         return contributions[_projectId][_contributor];
     }
+
+    function getProjectsCount() public view returns (uint256) {
+        return projects.length;
+    }
+
+    function getAllProjects() public view returns (Project[] memory) {
+        return projects;
+    }
 }
