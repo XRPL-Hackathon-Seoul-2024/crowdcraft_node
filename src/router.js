@@ -49,8 +49,6 @@ async function uploadToIPFS(file) {
 }
 
 // 프로젝트 생성
-// src/router.js의 프로젝트 생성 라우터
-
 router.post('/create/project', (req, res, next) => {
     upload.single('image')(req, res, async (err) => {
       if (err) {
