@@ -4,7 +4,6 @@ const { ethers } = require('ethers');
 const xrpl = require('xrpl');
 const fs = require('fs'); 
 const path = require('path');
-const { AxelarAssetTransfer, Environment, EvmChain } = require("@axelar-network/axelarjs-sdk");
 
 require('dotenv').config();
 
@@ -13,35 +12,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 const port = 3000;
 
-// Axelar SDK 초기화
-const axelarAssetTransfer = new AxelarAssetTransfer({
-  environment: Environment.TESTNET,
-  auth: 'local',
-});
-
-// EVM 스마트 계약 주소와 ABI 설정
-const evmContractAddress = '0x995C0cF4ce124fb506541D500ae050797e67BcE0';
-const contractPath = path.join(__dirname, '../build/contracts/CrowdFundingProject.json');
-
-let evmContractABI = [];
-try {
-  const contractJson = fs.readFileSync(contractPath, 'utf8');
-  const contractObject = JSON.parse(contractJson);
-  evmContractABI = contractObject.abi;
-} catch (error) {
-  console.error('Error reading or parsing contract JSON file:', error);
-  process.exit(1);
-}
-console.log({ evmContractAddress, evmContractABI });
-
-// Polygon Mainnet 프로바이더 초기화
+// Ethereum 설정
+const AXELAR_GATEWAY = '0xAABdd46ba1B3147d0Cf6aCc9605a74fE8668fC74';
+const AXELAR_GATEWAY_ABI = [
+  "function sendToken(string destinationChain, string destinationAddress, string symbol, uint256 amount)"
+];
 const alchemyProvider = new ethers.JsonRpcProvider(process.env.ALCHEMY_API_URL);
+const ethWallet = new ethers.Wallet(process.env.ETH_PRIVATE_KEY, alchemyProvider);
 
-// 스마트 계약 인스턴스 생성
-const contract = new ethers.Contract(evmContractAddress, evmContractABI, alchemyProvider);
-
-// XRPL 클라이언트 초기화
+// XRPL 설정
 const xrplClient = new xrpl.Client(process.env.XRPL_TEST_NETWORK);
+const xrplWallet = xrpl.Wallet.fromSeed(process.env.XRPL_SEED);
 
 async function setupXrplClient() {
   try {
@@ -64,12 +45,14 @@ async function getXrpBalance(address) {
       ledger_index: 'validated'
     });
     console.log(`XRP Address Balance: ${response.result.account_data.Balance} drops`);
+    return response.result.account_data.Balance;
   } catch (error) {
     console.error("Error getting XRP balance:", error.message);
+    return null;
   }
 }
 
-// EVM 네트워크에서 계정 잔액 가져오기
+// Ethereum 네트워크에서 계정 잔액 가져오기
 async function getBalanceEvm(address) {
   try {
     if (!address || !ethers.isAddress(address)) {
@@ -82,55 +65,77 @@ async function getBalanceEvm(address) {
     }
     
     console.log(`EVM Address Balance: ${ethers.formatEther(balance)} ETH`);
+    return balance;
   } catch (error) {
     console.error("Error getting EVM balance:", error.message);
+    return null;
   }
 }
 
-// Axelar를 통해 EVM에서 XRPL로 자산 전송하기
-async function transferAssetsFromEvmToXrpl(fromAddress, toAddress, amount, symbol) {
+// Ethereum에서 XRPL로 자산 전송
+async function bridgeTokenToXRPL(toAddress, amount, symbol) {
   try {
-    if (!fromAddress || !toAddress) {
+    if (!toAddress) {
       throw new Error("Invalid address provided for transfer.");
     }
 
-    const transferResult = await axelarAssetTransfer.sendToken({
-      fromChain: EvmChain.POLYGON,
-      toChain: 'ripple',
-      fromAddress: fromAddress,
-      toAddress: toAddress,
-      asset: symbol,
-      amount: amount
-    });
-    console.log('Transfer from EVM to XRPL successful:', transferResult);
+    const axelarGateway = new ethers.Contract(AXELAR_GATEWAY, AXELAR_GATEWAY_ABI, ethWallet);
+    const tx = await axelarGateway.sendToken("xrpl", toAddress, symbol, amount);
+    await tx.wait();
+    console.log(`Bridged ${amount} ${symbol} to XRPL address ${toAddress}`);
+    return tx.hash;
   } catch (error) {
-    console.error('Error transferring assets from EVM to XRPL:', error.message);
+    console.error('Error bridging token to XRPL:', error.message);
+    return null;
   }
 }
 
-// Axelar를 통해 XRPL에서 EVM으로 자산 전송하기
-async function transferAssetsFromXrplToEvm(fromAddress, toAddress, amount, symbol) {
+// XRPL에서 Ethereum으로 자산 전송
+async function bridgeTokenToEthereum(toAddress, amount, symbol) {
   try {
-    if (!fromAddress || !toAddress) {
+    if (!toAddress) {
       throw new Error("Invalid address provided for transfer.");
     }
 
-    const transferResult = await axelarAssetTransfer.sendToken({
-      fromChain: 'ripple',
-      toChain: EvmChain.POLYGON,
-      fromAddress: fromAddress,
-      toAddress: toAddress,
-      asset: symbol,
-      amount: amount
-    });
-    console.log('Transfer from XRPL to EVM successful:', transferResult);
+    const tx = await xrplClient.submitAndWait({
+      TransactionType: "Payment",
+      Account: xrplWallet.address,
+      Amount: amount,
+      Destination: "rfEf91bLxrTVC76vw1W3Ur8Jk4Lwujskmb", // Axelar's XRPL multisig account
+      Memos: [
+        {
+          Memo: {
+            MemoData: Buffer.from(toAddress.slice(2), 'hex').toString('hex'),
+            MemoType: Buffer.from("destination_address", 'ascii').toString('hex'),
+          },
+        },
+        {
+          Memo: {
+            MemoData: Buffer.from("ethereum", 'ascii').toString('hex'),
+            MemoType: Buffer.from("destination_chain", 'ascii').toString('hex'),
+          },
+        },
+        {
+          Memo: {
+            MemoData: "0".padStart(64, '0'),
+            MemoType: Buffer.from("payload_hash", 'ascii').toString('hex'),
+          },
+        },
+      ],
+    }, { wallet: xrplWallet });  // 여기에 지갑을 추가합니다.
+    console.log(`Bridged ${amount} ${symbol} to Ethereum address ${toAddress}`);
+    return tx.result.hash;
   } catch (error) {
-    console.error('Error transferring assets from XRPL to EVM:', error.message);
+    console.error('Error bridging token to Ethereum:', error.message);
+    return null;
   }
 }
 
-// Import router.js and use it
+
+// 라우터 임포트
 const { router } = require('./router');
+
+// 라우터 사용
 app.use('/api', router);
 
 // 서버 실행
@@ -141,16 +146,19 @@ app.listen(port, async () => {
   await setupXrplClient();
 
   // XRP 계정 잔액 가져오기
-  const xrpAddress = 'r4YpZ6GrBxw9M8MAghGSGVG5BRnQeamtg5';
+  const xrpAddress = xrplWallet.address;
   await getXrpBalance(xrpAddress);
-  
   // EVM 계정 잔액 가져오기
-  const evmAddress = '0x950205541860cDD5719725c8cC2d1031e0Cc50b1';
+  const evmAddress = ethWallet.address;
   await getBalanceEvm(evmAddress);
 
   // Axelar를 사용한 자산 전송 (EVM에서 XRPL로)
-  await transferAssetsFromEvmToXrpl(evmAddress, xrpAddress, '10', 'aUSDC');
-
+  await bridgeTokenToXRPL(xrpAddress, '10', 'aUSDC');
   // Axelar를 사용한 자산 전송 (XRPL에서 EVM으로)
-  await transferAssetsFromXrplToEvm(xrpAddress, evmAddress, '10', 'wXRP');
+  await bridgeTokenToEthereum(evmAddress, '10', 'XRP');
+
+  // XRP 계정 잔액 가져오기
+  await getXrpBalance(xrpAddress);
+  // EVM 계정 잔액 가져오기
+  await getBalanceEvm(evmAddress);
 });
