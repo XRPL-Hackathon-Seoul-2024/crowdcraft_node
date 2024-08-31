@@ -44,29 +44,76 @@ The smart contract has been deployed to the blockchain. Below are the deployment
 ### Deploy Log
 
 ```plaintext
-Compiling your contracts...
-===========================
-> Everything is up to date, there is nothing to compile.
-
-Starting migrations...
-======================
-> Network name:    'xrpl_evm_sidechain'
-> Network id:      1440002
-> Block gas limit: 21000000 (0x1406f40)
-
-1_deploy_contracts.js
+ <   {
+ <     "id": 56,
+ <     "jsonrpc": "2.0",
+ <     "result": {
+ <       "author": "0xe04cc55ebee1cbce552f250e85c57b70b2e2625b",
+ <       "baseFeePerGas": "0x6d23ad5f800",
+ <       "difficulty": "0x0",
+ <       "extraData": "0x",
+ <       "gasLimit": "0xe4e1c0",
+ <       "gasUsed": "0x0",
+ <       "hash": "0x4a802569361498ad76036175c693d858ce946e9f6b571bacf7cd5cdc8d154fb4",
+ <       "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+ <       "miner": "0xe04cc55ebee1cbce552f250e85c57b70b2e2625b",
+ <       "nonce": "0x0000000000000000",
+ <       "number": "0xe77e6f",
+ <       "parentHash": "0xa30533d39e0f9a31904df8a5a8adc8341db5f9e5c7bc5e64efd90fbecd6cc99d",
+ <       "receiptsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+ <       "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+ <       "size": "0x201",
+ <       "stateRoot": "0x13f2fbc0b49301798658ab8ef61260ee83fc459bfa4fec2c46b1d4c50411641b",
+ <       "timestamp": "0x66d3a220",
+ <       "totalDifficulty": "0x0",
+ <       "transactions": [],
+ <       "transactionsRoot": "0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421",
+ <       "uncles": []
+ <     }
+ <   }
  <   {
  <     "id": 57,
  <     "jsonrpc": "2.0",
  <     "result": {
  <       "transactionHash": "0x8e12c5f39d9cd7b1c11c97413d4ebc50f355039a45bad43213f4c411bba9fcd3",
- <       "contractAddress": "0x26b86e7f22ed4490aef79ef72dae8269af0af2e0",
- <       "status": "0x1",
+ <       "transactionIndex": "0x0",
+ <       "blockHash": "0xd89fe172f1c1a0f9df8977d007505a7471f00248aeb30a77da4c5198ea19eb1b",
+ <       "from": "0x8a31ea238800d52e3517be2e66b60705b1118ff0",
+ <       "to": null,
+ <       "blockNumber": "0xe77e6c",
+ <       "cumulativeGasUsed": "0x1f8d44",
  <       "gasUsed": "0x1f8d44",
+ <       "contractAddress": "0x26b86e7f22ed4490aef79ef72dae8269af0af2e0",
+ <       "logs": [],
+ <       "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+ <       "status": "0x1",
+ <       "effectiveGasPrice": "0x6d23ad5f800",
+ <       "type": "0x0"
  <     }
  <   }
-> confirmation number: 2 (block: 15171183)
-> Total cost:            15.50835 ETH
+   > {
+   >   "jsonrpc": "2.0",
+   >   "id": 59,
+   >   "method": "eth_getBlockByNumber",
+   >   "params": [
+   >     "latest",
+   >     false
+   >   ]
+   > }
+ <   {
+ <     "id": 58,
+ <     "jsonrpc": "2.0",
+ <     "result": "0xe77e6f"
+ <   }
+   > confirmation number: 2 (block: 15171183)
+   > Saving artifacts
+   -------------------------------------
+   > Total cost:            15.50835 ETH
+
+Summary
+=======
+> Total deployments:   1
+> Final cost:          15.50835 ETH
 ```
 
 ## Transactions
