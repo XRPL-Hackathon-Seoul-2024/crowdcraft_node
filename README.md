@@ -1,9 +1,5 @@
 # CROWD_CRAFT_BACK
 
-## Overview
-
-CROWD_CRAFT_BACK is a backend application designed to support crowdfunding functionalities on the blockchain. It leverages various blockchain technologies and integrates with multiple platforms to enable the creation, funding, and management of crowdfunding projects.
-
 ## Getting Started
 
 To set up and run the application, follow these steps:
