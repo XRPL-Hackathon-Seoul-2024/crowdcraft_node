@@ -137,6 +137,28 @@ router.get('/project/:id', async (req, res) => {
     }
 });
 
+// router.get('/project-details/:id', async (req, res) => {
+//     try {
+//         const projectId = req.params.id;
+//         const projectDetails = await crowdFundingContract.getProjectDetails(projectId);
+//         res.json({
+//             name: projectDetails[0],
+//             category: projectDetails[1],
+//             description: projectDetails[2],
+//             imageUrl: projectDetails[3],
+//             owner: projectDetails[4],
+//             goal: ethers.formatEther(projectDetails[5]),
+//             amountRaised: ethers.formatEther(projectDetails[6]),
+//             deadline: new Date(projectDetails[7] * 1000).toISOString(),
+//             isFunded: projectDetails[8],
+//             isClosed: projectDetails[9]
+//         });
+//     } catch (error) {
+//         console.error('Error fetching project details:', error);
+//         res.status(500).json({ error: 'Failed to fetch project details' });
+//     }
+// });
+
 module.exports = {
     router, xrplClient
 };
