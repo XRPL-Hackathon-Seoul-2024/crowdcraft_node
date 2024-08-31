@@ -23,5 +23,5 @@ npm run start
 ## Deploy
 
 ```
-- SideChain Contract: 0x7b36b9d55f06377b8aed57e315393f74d8b0cec66cf03e4ed5a6d21daa945302 (Polygon mainnet)
+- SideChain Contract: 0x7b36b9d55f06377b8aed57e315393f74d8b0cec66cf03e4ed5a6d21daa945302 (EVM)
 ```
